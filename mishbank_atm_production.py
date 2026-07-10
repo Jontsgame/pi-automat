@@ -176,8 +176,12 @@ class ServoController:
             try:
                 Device.pin_factory = LGPIOFactory()
                 self.servo = Servo(gpio_pin)
+                
+                # Sofortiges Abschalten des Signals nach dem Start, um Jittern zu verhindern
+                self.servo.detach()
+                
                 self.is_initialized = True
-                print(f"✅ Servo initialized on GPIO pin {gpio_pin}")
+                print(f"✅ Servo initialized on GPIO pin {gpio_pin} and detached (no jitter)")
             except Exception as e:
                 print(f"⚠️  Servo initialization failed: {e}")
                 self.is_initialized = False
@@ -196,20 +200,28 @@ class ServoController:
         try:
             print("💰 Initiating cash dispense...")
             
-            # Rotate to 180° (full rotation)
+            # Das Zuweisen eines Wertes schaltet das PWM-Signal automatisch wieder EIN
+            # Rotation auf Maximalposition (180°)
             self.servo.value = 1
             time.sleep(1)
             
-            # Return to 0°
+            # Zurück auf Minimalposition (0°)
             self.servo.value = -1
             time.sleep(1)
             
-            # Center
+            # Neutralstellung (90°)
             self.servo.value = 0
+            time.sleep(0.5) # Kurze Pause, damit der Servo die Mitte sicher erreicht
             
-            print("✅ Cash dispensed successfully")
+            # Signal sofort wieder AUSSCHALTEN, sobald die Bewegung fertig ist
+            self.servo.detach()
+            print("✅ Cash dispensed successfully (Servo detached)")
+            
         except Exception as e:
             print(f"❌ Servo error: {e}")
+            # Sicherheitshalber auch im Fehlerfall abschalten
+            if self.servo:
+                self.servo.detach()
     
     def cleanup(self) -> None:
         """Gracefully close servo connection"""
@@ -219,7 +231,6 @@ class ServoController:
                 print("🔌 Servo cleaned up")
             except Exception as e:
                 print(f"Servo cleanup error: {e}")
-
 
 # ═══════════════════════════════════════════════════════════════════════════
 # UTILITY FUNCTIONS
