@@ -177,11 +177,15 @@ class ServoController:
                 Device.pin_factory = LGPIOFactory()
                 self.servo = Servo(gpio_pin)
                 
-                # Sofortiges Abschalten des Signals nach dem Start, um Jittern zu verhindern
+                # In der höchsten Position (Maximalstellung / 180°) starten
+                self.servo.value = 1
+                time.sleep(0.8)  # Zeit geben, um beim Systemstart die Position anzufahren
+                
+                # Signal danach abschalten, damit er in dieser Position nicht zittert
                 self.servo.detach()
                 
                 self.is_initialized = True
-                print(f"✅ Servo initialized on GPIO pin {gpio_pin} and detached (no jitter)")
+                print(f"✅ Servo initialized on GPIO pin {gpio_pin} at maximum position (no jitter)")
             except Exception as e:
                 print(f"⚠️  Servo initialization failed: {e}")
                 self.is_initialized = False
@@ -190,36 +194,31 @@ class ServoController:
     
     def dispense_cash(self) -> None:
         """
-        Rotates servo one full cycle to simulate cash dispensing
+        Rotates servo one full cycle to simulate cash dispensing from the highest position
         Duration: ~2 seconds (smooth rotation)
         """
         if not self.is_initialized:
-            print("🎬 [SIMULATION] Servo rotation: 0° → 180° → 0°")
+            print("🎬 [SIMULATION] Servo rotation: 180° → 0° → 180°")
             return
         
         try:
             print("💰 Initiating cash dispense...")
             
-            # Das Zuweisen eines Wertes schaltet das PWM-Signal automatisch wieder EIN
-            # Rotation auf Maximalposition (180°)
-            self.servo.value = 1
-            time.sleep(1)
-            
-            # Zurück auf Minimalposition (0°)
+            # Bewegung startet von der höchsten Position (180°) runter auf die Minimalposition (0°)
             self.servo.value = -1
             time.sleep(1)
             
-            # Neutralstellung (90°)
-            self.servo.value = 0
-            time.sleep(0.5) # Kurze Pause, damit der Servo die Mitte sicher erreicht
+            # Wieder zurück nach oben auf die höchste Position (180°) fahren
+            self.servo.value = 1
+            time.sleep(1)  # Zeit geben, um die obere Endposition sicher zu erreichen
             
-            # Signal sofort wieder AUSSCHALTEN, sobald die Bewegung fertig ist
+            # Signal sofort wieder ausschalten, damit er oben stillstehen bleibt
             self.servo.detach()
-            print("✅ Cash dispensed successfully (Servo detached)")
+            print("✅ Cash dispensed successfully (Servo detached at maximum position)")
             
         except Exception as e:
             print(f"❌ Servo error: {e}")
-            # Sicherheitshalber auch im Fehlerfall abschalten
+            # Sicherheitshalber auch im Fehlerfall das Signal kappen
             if self.servo:
                 self.servo.detach()
     
